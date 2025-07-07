@@ -28,8 +28,8 @@ class CredentialProvider:
         self.client_secret = os.getenv(client_secret_env)
         self.token_file = token_file
         self.scopes = scopes or [
-            "https://www.googleapis.com/auth/gmail.readonly",
-            "https://www.googleapis.com/auth/gmail.modify",
+            "https://www.googleapis.com/auth/gmail.readonly", # read emails
+            "https://www.googleapis.com/auth/gmail.modify", # mark as read
             "https://www.googleapis.com/auth/spreadsheets",
         ]
         self._creds: Optional[BaseCredentials] = None
@@ -53,8 +53,7 @@ class CredentialProvider:
         else:
             # 3) Run Web Application Flow
             redirect_url: str = "http://localhost:8080/callback"
-            # redirect_url = "https://5481-2601-644-8001-7440-5db4-b47d-6b6d-e234.ngrok-free.app/callback"
-
+            
             client_config = {
                 "web": {
                     "client_id":     self.client_id,
