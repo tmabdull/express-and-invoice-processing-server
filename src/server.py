@@ -1,9 +1,12 @@
-import os
 import argparse
 from fastmcp import FastMCP
 from src.tools import bootstrap_server
 from fastmcp.server.middleware.logging import LoggingMiddleware
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
+
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
 def main():
     # Parse command-line options for host, port, and path
