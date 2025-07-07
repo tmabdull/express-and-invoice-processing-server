@@ -5,7 +5,7 @@ from src.auth.credentials import CredentialProvider
 
 async def main():
     SPREADSHEET_ID = "1q9plI3gVExNpFJCuKG2f1zER2ju93zFD-FW0iaFSJXs"
-    WORKSHEET_NAME = "Expenses"
+    WORKSHEET_NAME = "Sheet1"
 
     print("initialzing cred provider...")
 

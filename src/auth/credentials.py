@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 import os
 load_dotenv()
 
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+
 class CredentialProvider:
     """
     Provides OAuth2 Credentials via a Web‐Server flow.
@@ -49,19 +51,22 @@ class CredentialProvider:
             )
         else:
             # 3) Run Web Application Flow
+            redirect_url: str = "http://localhost:8080/callback"
+            # redirect_url = "https://5481-2601-644-8001-7440-5db4-b47d-6b6d-e234.ngrok-free.app/callback"
+
             client_config = {
                 "web": {
                     "client_id":     self.client_id,
                     "client_secret": self.client_secret,
                     "auth_uri":      "https://accounts.google.com/o/oauth2/auth",
                     "token_uri":     "https://oauth2.googleapis.com/token",
-                    "redirect_uris": ["http://localhost:8080/callback"],
+                    "redirect_uris": [redirect_url],
                 }
             }
             flow = Flow.from_client_config(
                 client_config=client_config,
                 scopes=self.scopes,
-                redirect_uri="http://localhost:8080/callback",
+                redirect_uri=redirect_url,
             )
 
             auth_url, _ = flow.authorization_url(

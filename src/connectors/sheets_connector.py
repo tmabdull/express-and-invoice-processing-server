@@ -4,6 +4,7 @@ from typing import List, Optional
 
 import gspread
 from gspread.exceptions import APIError, SpreadsheetNotFound, WorksheetNotFound
+from gspread.utils import ValueInputOption
 from src.auth.credentials import CredentialProvider
 from .interfaces import ParsedExpense, SheetsConnector
 
@@ -77,19 +78,21 @@ class GSpreadSheetsConnector(SheetsConnector):
         ws: gspread.Worksheet = await asyncio.to_thread(sync_open)
         return ws
 
-    async def append_row(self, worksheet_handle, row: List[str]) -> None:
+    async def append_row(self, worksheet_handle: gspread.Worksheet, row: List[str]) -> None:
         """
         Append a single row to the given worksheet with retry/back-off.
         """
-        async def _append():
+        def sync_append():
             attempt = 0
             while attempt <= self._max_retries:
                 try:
-                    worksheet_handle.append_row(row, value_input_option="USER_ENTERED")
+                    # Use the correct enum value instead of string literal
+                    worksheet_handle.append_row(row, value_input_option=ValueInputOption.user_entered)
                     return
                 except APIError as exc:
+                    status = getattr(exc.response, "status_code", None)
                     # Only retry on 429 / 5xx responses
-                    if exc.response and exc.response.status_code >= 500:
+                    if status and status >= 500:
                         if attempt == self._max_retries:
                             raise
                         self._retry_sleep(attempt)
@@ -97,16 +100,16 @@ class GSpreadSheetsConnector(SheetsConnector):
                         continue
                     raise  # Non-retryable error
 
-        await asyncio.to_thread(_append)
+        await asyncio.to_thread(sync_append)
 
     # Convenience wrapper
     async def record_expense(self, expense: ParsedExpense) -> None:
         """
         Helper that converts ParsedExpense → row and appends to the sheet.
         """
-        # Ensure worksheet is open
+        # Ensure worksheet is open and handle is not None
         if self._worksheet_handle is None:
-            await self.open_sheet(self._spreadsheet_id, self._worksheet_name)
+            self._worksheet_handle = await self.open_sheet(self._spreadsheet_id, self._worksheet_name)
 
         # Convert to list of strings
         row = [
@@ -116,4 +119,6 @@ class GSpreadSheetsConnector(SheetsConnector):
             expense.category or "",
             expense.description or "",
         ]
+        
+        # Now we can safely pass the non-None worksheet handle
         await self.append_row(self._worksheet_handle, row)
