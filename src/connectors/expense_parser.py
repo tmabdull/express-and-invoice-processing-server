@@ -1,5 +1,3 @@
-# File: src/connectors/expense_parser.py
-
 from typing import Any, Callable, Dict, List, Optional
 from datetime import datetime
 import re

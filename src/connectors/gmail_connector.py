@@ -1,10 +1,7 @@
-# File: src/connectors/gmail_connector.py
-
 import base64
 from typing import List
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from google.auth.transport.requests import Request
 from .interfaces import GmailConnector, RawEmail
 from src.auth.credentials import CredentialProvider
 
