@@ -1,13 +1,16 @@
+# File: src/auth/credentials.py
+
 import os
-from typing import Optional, Union, List, cast
+from typing import Optional, List
 from google.auth.credentials import Credentials as BaseCredentials
 from google.oauth2.credentials import Credentials as OAuth2Credentials
 from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow
+from src.auth.oauth_callback_server import wait_for_callback
 
 class CredentialProvider:
     """
-    Loads, refreshes, and supplies OAuth2 Credentials for Google APIs.
+    Provides OAuth2 Credentials via a Web‐Server flow.
     """
 
     def __init__(
@@ -24,66 +27,68 @@ class CredentialProvider:
             "https://www.googleapis.com/auth/gmail.readonly",
             "https://www.googleapis.com/auth/spreadsheets",
         ]
-        self._creds: Optional[Union[BaseCredentials, OAuth2Credentials]] = None
+        self._creds: Optional[BaseCredentials] = None
 
-    def load_credentials(self) -> OAuth2Credentials:
+    def load_credentials(self) -> BaseCredentials:
         """
-        Load credentials from disk or run OAuth flow if necessary.
-        Always returns an OAuth2Credentials instance.
+        Load credentials from disk or run Web‐Server OAuth flow if necessary.
+        Returns a BaseCredentials instance (e.g. OAuth2Credentials).
         """
-        # Return cached valid creds
-        if (
-            self._creds
-            and isinstance(self._creds, OAuth2Credentials)
-            and self._creds.valid
-        ):
+        # 1) Reuse cached valid credentials
+        if self._creds and self._creds.valid:
             return self._creds
 
-        creds: OAuth2Credentials
+        creds: BaseCredentials
 
-        # Load from file if present
+        # 2) Load from token file if it exists
         if os.path.exists(self.token_file):
             creds = OAuth2Credentials.from_authorized_user_file(
                 self.token_file, scopes=self.scopes
             )
         else:
+            # 3) Run Web Application Flow
             client_config = {
-                "installed": {
-                    "client_id": self.client_id,
+                "web": {
+                    "client_id":     self.client_id,
                     "client_secret": self.client_secret,
-                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                    "token_uri": "https://oauth2.googleapis.com/token",
-                    "redirect_uris": [
-                        "urn:ietf:wg:oauth:2.0:oob",
-                        "http://localhost"
-                    ]
+                    "auth_uri":      "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri":     "https://oauth2.googleapis.com/token",
+                    "redirect_uris": ["http://localhost:8080/callback"],
                 }
             }
-            flow = InstalledAppFlow.from_client_config(
+            flow = Flow.from_client_config(
                 client_config=client_config,
-                scopes=self.scopes
+                scopes=self.scopes,
+                redirect_uri="http://localhost:8080/callback",
             )
 
-            # Cast tells the type‐checker “I know this call returns the Google OAuth2 credentials type” 
-            # Guarantees .refresh_token and .to_json() methods exist on creds.
-            # Makes self._creds = creds acceptable because OAuth2Credentials is a subtype of your Union type.
-            creds = cast(OAuth2Credentials, flow.run_local_server(port=0))
-        
-        if creds.expired and creds.refresh_token:
+            auth_url, _ = flow.authorization_url(
+                access_type="offline",
+                prompt="consent",
+            )
+            print(f"Visit this URL to authorize the application:\n\n{auth_url}\n")
+
+            # Wait for your Flask callback to capture the full redirect URL...
+            authorization_response = wait_for_callback()
+
+            flow.fetch_token(authorization_response=authorization_response)
+            creds = flow.credentials  # type: BaseCredentials
+
+        # 4) Refresh if expired
+        if creds.expired and hasattr(creds, "refresh_token") and creds.refresh_token:
             creds.refresh(Request())
 
-        # Persist OAuth2Credentials
+        # 5) Persist for reuse
         with open(self.token_file, "w") as token:
             token.write(creds.to_json())
 
-        # Store in the provider as the common BaseCredentials type
-        self._creds = creds  
+        self._creds = creds
         return creds
 
-    def get_gmail_credentials(self) -> OAuth2Credentials:
-        """Return valid Gmail Credentials."""
+    def get_gmail_credentials(self) -> BaseCredentials:
+        """Return valid credentials for Gmail API."""
         return self.load_credentials()
 
-    def get_sheets_credentials(self) -> OAuth2Credentials:
-        """Return valid Google Sheets Credentials."""
+    def get_sheets_credentials(self) -> BaseCredentials:
+        """Return valid credentials for Sheets API."""
         return self.load_credentials()
