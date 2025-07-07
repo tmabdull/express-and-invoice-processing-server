@@ -7,7 +7,10 @@ from src.connectors.sheets_connector import GSpreadSheetsConnector
 from src.connectors.slack_connector import SlackWebConnector
 from src.auth.credentials import CredentialProvider
 from src.workflow import ExpenseWorkflow
+
+from dotenv import load_dotenv
 import os
+load_dotenv()
 
 # Instantiate shared providers and connectors
 _creds = CredentialProvider()

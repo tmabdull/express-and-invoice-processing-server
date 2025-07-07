@@ -1,12 +1,14 @@
-# File: src/auth/credentials.py
-
-import os
 from typing import Optional, List
 from google.auth.credentials import Credentials as BaseCredentials
 from google.oauth2.credentials import Credentials as OAuth2Credentials
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import Flow
+
 from src.auth.oauth_callback_server import wait_for_callback
+
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
 class CredentialProvider:
     """
