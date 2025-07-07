@@ -29,6 +29,7 @@ class CredentialProvider:
         self.token_file = token_file
         self.scopes = scopes or [
             "https://www.googleapis.com/auth/gmail.readonly",
+            "https://www.googleapis.com/auth/gmail.modify",
             "https://www.googleapis.com/auth/spreadsheets",
         ]
         self._creds: Optional[BaseCredentials] = None
